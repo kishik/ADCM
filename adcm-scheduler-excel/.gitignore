@@ -1,0 +1,9 @@
+\.idea
+#\data
+\logs
+*.xml
+*.iml
+*.pyc
+.pdm.toml
+.vscode
+config.yml

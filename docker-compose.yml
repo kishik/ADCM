@@ -1,0 +1,90 @@
+services:
+  web:
+    build: adcm-scheduler-excel/
+    container_name: web-scheduler
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    # depends_on:
+    #   - neo4j_historical
+
+  
+  neo4j_user:
+    image: neo4j:latest
+    container_name: neo4j_user
+    restart: unless-stopped
+    ports:
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
+    # volumes:
+    #    - ./neo4j.conf:/conf/neo4j.conf
+#       - neo4j_data:/data
+#       - neo4j_logs:/logs
+#       - neo4j_import:/var/lib/neo4j/import
+    environment:
+      NEO4J_AUTH: neo4j/23109900
+
+
+  neo4j_elements:
+    image: neo4j:latest
+    container_name: neo4j_elements
+    restart: unless-stopped
+    ports:
+      - "7473:7474" # HTTP
+      - "7686:7687" # Bolt
+    volumes:
+      - ./conf:/conf_elements
+      - ./data:/data_elements
+      - ./import:/import_elements
+      - ./logs:/logs_elements
+      - ./plugins:/plugins_elements
+      # - ./neo4j.conf:/conf/neo4j.conf
+    environment:
+      NEO4J_AUTH: neo4j/23109900
+    # depends_on:
+      # - neo4j_user
+      # - neo4j_historical
+
+
+  # neo4j_groups:
+  #   image: neo4j:latest
+  #   container_name: neo4j_groups
+  #   restart: unless-stopped
+  #   ports:
+  #     - "7472:7474" # HTTP
+  #     - "7685:7687" # Bolt
+  #   volumes:
+  #     - ./conf:/conf_groups
+  #     - ./data:/data_groups
+  #     - ./import:/import_groups
+  #     - ./logs:/logs_groups
+  #     - ./plugins:/plugins_groups
+  #   environment:
+  #     NEO4J_AUTH: neo4j/23109900
+  #   depends_on:
+  #     # - neo4j_user
+  #     # - neo4j_historical
+  #     - neo4j_elements
+  
+
+  viewer:
+    build: viewer/
+#    image: viewer:0.0.1
+    container_name: viewer
+    # command: uvicorn main:app --host 0.0.0.0 --port 8070
+    restart: unless-stopped
+    ports:
+      - "8070:8070" # fastapi
+      - "3000:3000" # viewer
+    environment:
+      - PYTHONUNBUFFERED=0
+
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+
+

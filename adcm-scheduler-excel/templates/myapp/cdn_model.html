@@ -1,0 +1,114 @@
+{% extends "myapp/hat.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+    <style>
+    form.col-12{
+        padding: 0;
+    }
+
+    button.btn.btn-primary{
+        margin-left: 17.4%;
+        margin-right: 48.5%;
+    }
+    </style>
+
+    <div class ="col-10">
+    <h2 class="">Список Моделей Пользователя {{ user.username }}</h2>
+    <a class="btn btn-primary rounded-0 btn-block " id="insertRow" href="#">Add new row</a>
+
+
+
+
+        <div class="col-12 row">
+                <p class="col-2" >Раздел</p>
+                <p class="col-6" >URN</p>
+        </div>
+        <div class="col-12 row" id="table">
+        {% if urns.count > 0 %}
+            {% for urn in urns %}
+                {% if urn.userId == 0 and urn.isActive %}
+                        <form class="col-12" action="/update_urn" method="post">
+                        {% csrf_token %}
+                          <div class="form-row col-12">
+                              <input hidden="hidden" class="urn_id" value="{{ urn.id }}">
+                            <div class="col-2">
+                              <input type="text" class="form-control urn_name" readonly="readonly"  value="{{ urn.name }}" required>
+                            </div>
+                            <div class="col-10">
+                              <input type="text" class="form-control urn_urn" readonly="readonly" value="{{ urn.urn }}" required>
+                            </div>
+                          </div>
+
+                        </form>
+
+
+                {% elif user.id == urn.userId and urn.isActive %}
+                    <form class="col-12" action="/update_urn" method="post">
+                          <div class="form-row col-12">
+                              <input hidden="hidden" class="urn_id" value="{{ urn.id }}">
+                            <div class="col-2">
+                              <input type="text" class="form-control urn_name" value="{{ urn.name }}" required>
+                            </div>
+                            <div class="col-10">
+                              <input type="text" class="form-control urn_urn" value="{{ urn.urn }}" required>
+                            </div>
+                          </div>
+                              <div class="form-row col-12">
+                            <button class="btn btn-primary col-2 .offset-2" type="submit">Submit form</button>
+                            <button class="btn btn-danger col-2 .offset-2" type="button">Delete form</button>
+                          </div>
+
+                        </form>
+                {% endif %}
+            {% endfor %}
+
+        {% endif %}
+        </div>
+    </div>
+
+    <script>
+    $(function () {
+
+    // Start counting from the third row
+    let counter = {{ urns.count }};
+    console.log(counter)
+    $("#insertRow").on("click", function (event) {
+        event.preventDefault();
+        console.log("recieve")
+        let form = `
+       <form class="col-12" action="/update_urn" method="post">
+                          <div class="form-row col-12">
+                              <input hidden="hidden" class="urn_id" value="{{ urn.id }}">
+                            <div class="col-2">
+                              <input type="text" class="form-control urn_name" value="{{ urn.name }}" required>
+                            </div>
+                            <div class="col-10">
+                              <input type="text" class="form-control urn_urn" value="{{ urn.urn }}" required>
+                            </div>
+                          </div>
+                              <div class="form-row col-12">
+                            <button class="btn btn-primary col-2 .offset-2" type="submit">Submit form</button>
+                            <button class="btn btn-danger col-2 .offset-2" type="button">Delete form</button>
+                          </div>
+
+                        </form>`
+
+
+        // Insert the row inside a table
+        $("#table").append(form);
+
+        // Increase counter after each row insertion
+        counter++;
+    });
+
+    // Remove row when delete btn is clicked
+    $("#table").on("click", "#deleteRow", function (event) {
+        $(this).closest("tr").remove();
+        counter -= 1
+    });
+});
+    </script>
+
+{% endblock content %}

@@ -1,0 +1,11 @@
+ifcopenshell<0.7.1
+bs4
+fastapi
+gdown
+pydantic
+requests
+uvicorn
+networkx
+pandas
+neo4j
+xlrd

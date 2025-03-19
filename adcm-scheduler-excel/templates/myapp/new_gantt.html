@@ -1,0 +1,125 @@
+{% extends "myapp/hat.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% csrf_token %}
+{% block content %}
+<script src="{% static "myapp/js/dhtmlxgantt.js" %}" type="text/javascript">
+        </script>
+        <link rel="stylesheet" href="{% static "myapp/css/dhtmlxgantt.css" %}" />
+<script src="https://export.dhtmlx.com/gantt/api.js"></script>
+<div class="gantt_control">
+	<input value="Export to MS Project" type="button" class="btn btn-primary" onclick="gantt.exportToMSProject({skip_circular_links: false})" style="margin:0 15px;">
+	<input value="Export to PrimaveraP6" type="button" class="btn btn-primary" onclick="gantt.exportToPrimaveraP6({skip_circular_links: false})" style="margin:0 15px;">
+	<input value="Export to Excel" type="button" class="btn btn-primary" onclick="gantt.exportToExcel()" style="margin:0 15px;">
+	<input value="Export to iCal" type="button" class="btn btn-primary" onclick="gantt.exportToICal()" style="margin:0 15px;">
+    <!-- <a class="nav-link" id="volumes"  href="/excel_export/" role="tab" aria-controls="v-pills-volumes" aria-selected="false" download>Выгрузка excel</a> -->
+</div>
+
+
+<div id="gantt_here" style='width:100%; height:500px;'></div>
+
+<input id="fullscreen_button" type="button" class="btn btn-primary btn-lg btn-block" value="Toggle Fullscreen"/>
+<script>
+// {#    gantt.plugins({#}
+// {#    auto_scheduling: true#}
+
+    // {#gantt.config.auto_scheduling = true;#}
+
+    gantt.plugins({
+		fullscreen: true
+	});
+
+    var zoomConfig = {
+    levels: [
+      {
+        name:"day",
+        scale_height: 27,
+        min_column_width:80,
+        scales:[
+            {unit: "day", step: 1, format: "%d %M"}
+        ]
+      },
+      {
+         name:"week",
+         scale_height: 50,
+         min_column_width:50,
+         scales:[
+          {unit: "week", step: 1, format: function (date) {
+           var dateToStr = gantt.date.date_to_str("%d %M");
+           var endDate = gantt.date.add(date, 6, "day");
+           var weekNum = gantt.date.date_to_str("%W")(date);
+           return "#" + weekNum + ", " + dateToStr(date) + " - " + dateToStr(endDate);
+           }},
+           {unit: "day", step: 1, format: "%j %D"}
+         ]
+       },
+       {
+         name:"month",
+         scale_height: 50,
+         min_column_width:120,
+         scales:[
+            {unit: "month", format: "%F, %Y"},
+            {unit: "week", format: "Week #%W"}
+         ]
+        },
+        {
+         name:"quarter",
+         height: 50,
+         min_column_width:90,
+         scales:[
+          {unit: "month", step: 1, format: "%M"},
+          {
+           unit: "quarter", step: 1, format: function (date) {
+            var dateToStr = gantt.date.date_to_str("%M");
+            var endDate = gantt.date.add(gantt.date.add(date, 3, "month"), -1, "day");
+            return dateToStr(date) + " - " + dateToStr(endDate);
+           }
+         }
+        ]},
+        {
+          name:"year",
+          scale_height: 50,
+          min_column_width: 30,
+          scales:[
+            {unit: "year", step: 1, format: "%Y"}
+        ]}
+    ]
+};
+
+gantt.ext.zoom.init(zoomConfig);
+
+
+	var button = document.getElementById("fullscreen_button");
+    button.addEventListener("click", function(){
+        if (!gantt.getState().fullscreen) {
+            // expanding the gantt to full screen
+            gantt.expand();
+        }
+        else {
+            // collapsing the gantt to the normal mode
+            gantt.collapse();
+        }
+    }, false);
+    gantt.config.readonly = true;
+    gantt.config.date_format = "%Y-%m-%d %H:%i";
+    gantt.i18n.setLocale("ru");
+    gantt.config.grid_width = 700;
+    gantt.config.columns = [
+    {name:"text",       label:"Task name",  width:"*", tree:true },
+    {name:"start_date", label:"Start time", align:"center" },
+    {name:"duration",   label:"Duration",   align:"center" },
+    {name:"add",        label:"",           width:44 }
+];
+    gantt.init("gantt_here");
+    gantt.load("/data/", "json");
+    let dp = new gantt.dataProcessor("/data/");
+    dp.init(gantt);
+    dp.setTransactionMode("REST");
+
+</script>
+{#    {% crispy form %}#}
+
+
+
+
+{% endblock %}
