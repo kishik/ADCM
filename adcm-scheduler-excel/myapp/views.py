@@ -21,6 +21,8 @@ from myapp.serializers import LinkSerializer, TaskSerializer
 from .forms import FileFieldForm
 from .gantt import data_collect, net_hierarhy
 from .graph_creation import add, neo4jexplorer
+from yandex_cloud_ml_sdk import YCloudML
+
 
 logger = logging.getLogger(__name__)
 cfg: dict = yml.get_cfg("neo4j")
@@ -40,6 +42,17 @@ API_DB_URL = cfg.get("api_db_url")
 API_DB = cfg.get("api_db")
 API_LOGIN = cfg.get("api_login")
 API_PASSWORD = cfg.get("api_password")
+GPT_FOLDER = cfg.get("gpt_folder")
+GPT_KEY = cfg.get("gpt_key")
+
+sdk = YCloudML(
+    folder_id=GPT_FOLDER,
+    auth=GPT_KEY,
+)
+
+model = sdk.models.completions("yandexgpt")
+model = model.configure(temperature=0.1)
+
 
 graph_data = []
 df = pd.DataFrame()
@@ -533,7 +546,16 @@ def adcm_volumes(request, project_id):
                                  })
 # print(jwt_request.status_code)                                 
     jwt = jwt_request.text
-    requests.get(f'http://viewer:8070/copy/{project_id}/', headers={"Authorization": f"Bearer {jwt}"}, params={'jwt': jwt})
+    response = requests.get(f'http://viewer:8070/copy/{project_id}/', headers={"Authorization": f"Bearer {jwt}"}, params={'jwt': jwt})
+    if response.status_code == 404:
+        return render(
+            request,
+            "myapp/error.html",
+            {
+                "error": ' '.join(('Ошибка:', response.json().get("message")))
+            },
+        )
+
     response = requests.get(f'http://viewer:8070/load/{project_id}/')
     # logger.error(response.status_code)
     if response.status_code == 404:
@@ -544,8 +566,8 @@ def adcm_volumes(request, project_id):
                 "error": ' '.join(('Ошибка:', response.json().get("message")))
             },
         )
-    else:
-        data = json.loads(response.json())
+    
+    data = json.loads(response.json())
     # try:    
     #     data = json.loads(response.json())
 
@@ -569,6 +591,22 @@ def adcm_volumes(request, project_id):
     graph_data = data.copy()
     data = [{k: v for k, v in d.items() if k != 'distance'} for d in data]
     wbs = {}
+
+    for i in range(len(graph_data)):
+        messages = [
+        {
+            "role": "system",
+            "text": f"Придумай одно короткое название для действия-работы при строительстве.",
+        },
+        {
+            "role": "user",
+            "text": graph_data[i]['name'],
+        },
+        ]
+
+        result = model.run(messages)
+        graph_data[i]['name'] = ' Оригинал: '.join((result.alternatives[0].text.replace('.',''), graph_data[i]['name']))
+    
     for node in graph_data:
         if node['wbs1'] not in wbs.keys():
             wbs[node['wbs1']] = {}
@@ -581,6 +619,11 @@ def adcm_volumes(request, project_id):
 
         if node['wbs4'] not in wbs[node['wbs1']][node['wbs2']][node['wbs3']]:
             wbs[node['wbs1']][node['wbs2']][node['wbs3']][node['wbs4']] = []
+
+        
+        # print(f"{result.alternatives[0].text.replace('.','')}", end = '')
+
+        # wbs[node['wbs1']][node['wbs2']][node['wbs3']][node['wbs4']]['name'] = result.alternatives[0].text.replace('.','')
 
         wbs[node['wbs1']][node['wbs2']][node['wbs3']][node['wbs4']].append(node)
 
@@ -677,9 +720,9 @@ def adcm_volumes(request, project_id):
                 </tr>
                 '''
             continue
-
+        
         text += f'''
-            <tr data-node="treetable-{el['lvl1']}.{el['lvl2']}.{el['lvl3']}.{el['lvl4']}.{el['lvl5']}" data-pnode="treetable-parent-{el['p_lvl1']}.{el['p_lvl2']}.{el['p_lvl3']}.{el['p_lvl4']}">
+            <tr data-node="treetable-{el['lvl1']}.{el['lvl2']}.{el['lvl3']}.{el['lvl4']}.{el['lvl5']}" data-pnode="treetable-parent-{el['p_lvl1']}.{el['p_lvl2']}.{el['p_lvl3']}">
                 <td>{el['wbs1']}</td><td>{el['wbs2']}</td><td>{el['wbs3']}</td><td>{el['wbs4_id']}</td><td>{el['wbs4']}</td><td>{el['id']}</td><td>{el['name']}</td>
             </tr>
             '''
