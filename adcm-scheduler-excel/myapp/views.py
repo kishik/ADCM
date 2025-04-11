@@ -93,7 +93,7 @@ def new_graph(request):
         "pass": PASS,
         "link": AddLink(),
         "node": AddNode(),
-        "ip": f'bolt://{IP}:7688'
+        "ip": f'neo4j://{IP}:7688'
     }
     return render(request, "myapp/hist_graph.html", context)
 
@@ -596,7 +596,7 @@ def adcm_volumes(request, project_id):
         messages = [
         {
             "role": "system",
-            "text": f"Придумай одно короткое название для действия-работы при строительстве.",
+            "text": f"Придумай одно короткое название для действия-работы при строительстве. Сохраняй уникальный цифровой идентификатор",
         },
         {
             "role": "user",

@@ -29,6 +29,7 @@ WBS3_LABEL = "WBS3"
 # WBS2 - other IFC types
 def get_wbs2(element):
     return node_attributes(element).get("ADCM_RD")
+    # return node_attributes(element).get("ADCM_RD") if node_attributes(element).get("ADCM_RD") is not None else 12345 
 
 
 # WBS3 - GESN or DIN
@@ -146,7 +147,7 @@ def add_wbs_node(tx, parent_id, wbs_id, wbs_name, label):
     MATCH (s) WHERE s.id = $s_id
     MERGE (s)-[:CONTAINS]->(:{label} {{id: $id, name: $name}})
     '''
-    tx.run(q_wbs_node, s_id=str(parent_id), id=str(wbs_id), name=wbs_name)
+    tx.run(q_wbs_node, s_id=str(parent_id), id=str(wbs_id), name=str(wbs_name))
 
 
 def add_el_to_wbs(tx, wbs_id, element_id):
@@ -361,10 +362,10 @@ class IfcToNeo4jConverter:
         with self.element_driver.session() as session:
             nodes = session.run(q_storey_wbs2).data()
             distances = calculateDistance(session, allNodes(session))
-            for i in nodes:
-                i.update({
-                    "wbs4": self.gesn_to_name.get(i.get("wbs4_id")),
-                    "distance": distances.get(i.get("id")),
+            for node in nodes:
+                node.update({
+                    "wbs4": self.gesn_to_name.get(node.get("wbs4_id")),
+                    "distance": distances.get(node.get("id")),
                 })
         nodes.sort(key=lambda el: el["distance"])
         return nodes
