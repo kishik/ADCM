@@ -108,6 +108,9 @@ async def load_project(project_id: str, jwt: str):
     headers = {"Authorization": f"{jwt}"}
     r = requests.get(f'http://{LAST_API}/api/Files/get_list_ifc_files_by_project/{project_id}', headers=headers)
     # print(r.json())
+    if len(r.json()['ifcFiles']) == 0:
+        os.chdir('/app/')
+        return JSONResponse(content={"message": "В проекте нет IFC файлов"}, status_code=404)
     for el in r.json()['ifcFiles']:
         m = requests.get(f"http://{LAST_API}/api/Files/download_file/{el['id']}/0", headers=headers, allow_redirects=True)
         open(f'{el["ifc_name"]}', 'wb').write(m.content)
@@ -135,4 +138,4 @@ async def load_project(project_id: str, jwt: str):
     logger.info(path_to_explorer)
     neo4j_exp.create(path)
     path_to_explorer[path] = neo4j_exp
-    return 200
+    return JSONResponse(content={}, status_code=200)
