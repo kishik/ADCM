@@ -605,7 +605,7 @@ def adcm_volumes(request, project_id):
         ]
 
         result = model.run(messages)
-        graph_data[i]['name'] = ' Оригинал: '.join((result.alternatives[0].text.replace('.',''), graph_data[i]['name']))
+        graph_data[i]['name'] = ' '.join((result.alternatives[0].text.replace('.',''), f'ID {i}'))
     
     for node in graph_data:
         if node['wbs1'] not in wbs.keys():
