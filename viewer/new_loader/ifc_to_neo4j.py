@@ -70,12 +70,22 @@ def node_attributes(elem) -> dict:
         return psets
 
     psets = get_psets(elem)
-
-    if "ADCM" in psets.keys():
-        # delete unnecessary key "id" from ADCM
-        if "id" in psets["ADCM"]:
-            psets["ADCM"].pop('id')
-        atts.update(psets["ADCM"])
+    found_key = None
+    for big_key in psets.keys():
+        for sub_key in psets[big_key].keys():
+            # if str(sub_key).startswith('ADCM_GESN'):
+            #     atts["ADCM_GESN"] = atts["ADCM_GESN"][:-3]
+            if str(sub_key).startswith('ADCM'):
+                found_key = big_key
+                if "id" in psets[big_key]:
+                    psets[big_key].pop('id')
+                atts.update(psets[big_key])
+                break
+    # if "ADCM" in psets.keys():
+    #     # delete unnecessary key "id" from ADCM
+    #     if "id" in psets["ADCM"]:
+    #         psets["ADCM"].pop('id')
+    #     atts.update(psets["ADCM"])
     if "ADCM_GESN" in atts.keys():
         atts["ADCM_GESN"] = atts["ADCM_GESN"][:-3]
     atts.setdefault("ADCM_Title", None)

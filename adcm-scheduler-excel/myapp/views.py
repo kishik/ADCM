@@ -428,7 +428,7 @@ def volumes(request, project_id):
                      'distance': ''})
                 for picoel in sorted(wbs[el][subel][miniel]):
                     final.append(
-                        {'id': '', 'wbs1': el, 'wbs2': subel, 'wbs3': miniel, 'wbs4_id': '', 'wbs4': picoel, 'name': '',
+                        {'id': '', 'wbs1': el, 'wbs2': subel, 'wbs3': miniel, 'wbs4_id': picoel, 'wbs4': '', 'name': '',
                          'distance': ''})
                     for nanoel in wbs[el][subel][miniel][picoel]:
                         final.append(nanoel)
@@ -617,15 +617,15 @@ def adcm_volumes(request, project_id):
         if node['wbs3'] not in wbs[node['wbs1']][node['wbs2']]:
             wbs[node['wbs1']][node['wbs2']][node['wbs3']] = {}
 
-        if node['wbs4'] not in wbs[node['wbs1']][node['wbs2']][node['wbs3']]:
-            wbs[node['wbs1']][node['wbs2']][node['wbs3']][node['wbs4']] = []
+        if node['wbs4_id'] not in wbs[node['wbs1']][node['wbs2']][node['wbs3']]:
+            wbs[node['wbs1']][node['wbs2']][node['wbs3']][node['wbs4_id']] = []
 
         
         # print(f"{result.alternatives[0].text.replace('.','')}", end = '')
 
         # wbs[node['wbs1']][node['wbs2']][node['wbs3']][node['wbs4']]['name'] = result.alternatives[0].text.replace('.','')
 
-        wbs[node['wbs1']][node['wbs2']][node['wbs3']][node['wbs4']].append(node)
+        wbs[node['wbs1']][node['wbs2']][node['wbs3']][node['wbs4_id']].append(node)
 
     final = []
     for el in sorted(wbs):
@@ -640,7 +640,7 @@ def adcm_volumes(request, project_id):
                      'distance': ''})
                 for picoel in sorted(wbs[el][subel][miniel]):
                     final.append(
-                        {'id': '', 'wbs1': el, 'wbs2': subel, 'wbs3': miniel, 'wbs4_id': '', 'wbs4': picoel, 'name': '',
+                        {'id': '', 'wbs1': el, 'wbs2': subel, 'wbs3': miniel, 'wbs4_id': picoel, 'wbs4': '', 'name': '',
                          'distance': ''})
                     for nanoel in wbs[el][subel][miniel][picoel]:
                         final.append(nanoel)
@@ -786,7 +786,7 @@ def schedule(request):
         if node['wbs1'] not in wbs.keys():
             wbs[node['wbs1']] = {}
             Task2(
-                id=node['wbs1'],
+                id=hash(node['wbs1']),
                 text=node['wbs1'],
                 # min(start_date of levels)
                 start_date=datetime.today() + timedelta(
@@ -800,7 +800,7 @@ def schedule(request):
         if node['wbs2'] not in wbs[node['wbs1']].keys():
             wbs[node['wbs1']][node['wbs2']] = {}
             Task2(
-                id=f"{node['wbs1']}{node['wbs2']}",
+                id=hash(f"{node['wbs1']}{node['wbs2']}"),
                 text=node['wbs2'],
                 # min(start_date of levels)
                 start_date=datetime.today() + timedelta(days=min([el['distance'] for el in graph_data if (
@@ -809,12 +809,12 @@ def schedule(request):
                         el['wbs1'] == node['wbs1'] and el['wbs2'] == node['wbs2'])]) + 1),
                 # duration = max([distances[din] for din in result[wbs1]])
                 # duration=1,
-                parent=node['wbs1']
+                parent=hash(node['wbs1'])
             ).save()
         if node['wbs3'] not in wbs[node['wbs1']][node['wbs2']]:
             wbs[node['wbs1']][node['wbs2']][node['wbs3']] = []
             Task2(
-                id=f"{node['wbs1']}{node['wbs2']}{node['wbs3']}",
+                id=hash(f"{node['wbs1']}{node['wbs2']}{node['wbs3']}"),
                 text=f"{node['wbs3']}",
                 # min(start_date of levels)
                 start_date=datetime.today() + timedelta(days=min([el['distance'] for el in graph_data if (
@@ -825,17 +825,17 @@ def schedule(request):
                     'wbs3'])]) + 1),
                 # duration = max([distances[din] for din in result[wbs1]])
                 # duration=1,
-                parent=f"{node['wbs1']}{node['wbs2']}"
+                parent=hash(f"{node['wbs1']}{node['wbs2']}")
             ).save()
 
         Task2(
-            id=f"{node['id']}",
+            id=hash(f"{node['id']}"),
             text=node['name'],
             # min(start_date of levels)
             start_date=datetime.today() + timedelta(days=node['distance']),
             # duration = max([distances[din] for din in result[wbs1]])
             duration=1,
-            parent=f"{node['wbs1']}{node['wbs2']}{node['wbs3']}"
+            parent=hash(f"{node['wbs1']}{node['wbs2']}{node['wbs3']}")
         ).save()
         print(node['distance'])
     # project_id = request.session["project_id"]
@@ -846,8 +846,8 @@ def schedule(request):
     # data = json.loads(response.json())
     for el in data:
         Link(
-            source=str(el['source']),
-            target=str(el['target']),
+            source=str(hash(el['source'])),
+            target=str(hash(el['target'])),
             type=str(el['type']),
             lag=el['lag'],
         ).save()
@@ -871,7 +871,7 @@ def adcm_schedule(request):
         if node['wbs1'] not in wbs.keys():
             wbs[node['wbs1']] = {}
             Task2(
-                id=node['wbs1'],
+                id=hash(node['wbs1']),
                 text=node['wbs1'],
                 # min(start_date of levels)
                 start_date=datetime.today() + timedelta(
@@ -885,7 +885,7 @@ def adcm_schedule(request):
         if node['wbs2'] not in wbs[node['wbs1']].keys():
             wbs[node['wbs1']][node['wbs2']] = {}
             Task2(
-                id=f"{node['wbs1']}{node['wbs2']}",
+                id=hash(f"{node['wbs1']}{node['wbs2']}"),
                 text=node['wbs2'],
                 # min(start_date of levels)
                 start_date=datetime.today() + timedelta(days=min([el['distance'] for el in graph_data if (
@@ -894,12 +894,12 @@ def adcm_schedule(request):
                         el['wbs1'] == node['wbs1'] and el['wbs2'] == node['wbs2'])]) + 1),
                 # duration = max([distances[din] for din in result[wbs1]])
                 # duration=1,
-                parent=node['wbs1']
+                parent=hash(node['wbs1'])
             ).save()
         if node['wbs3'] not in wbs[node['wbs1']][node['wbs2']]:
             wbs[node['wbs1']][node['wbs2']][node['wbs3']] = []
             Task2(
-                id=f"{node['wbs1']}{node['wbs2']}{node['wbs3']}",
+                id=hash(f"{node['wbs1']}{node['wbs2']}{node['wbs3']}"),
                 text=f"{node['wbs3']}",
                 # min(start_date of levels)
                 start_date=datetime.today() + timedelta(days=min([el['distance'] for el in graph_data if (
@@ -910,33 +910,33 @@ def adcm_schedule(request):
                     'wbs3'])]) + 1),
                 # duration = max([distances[din] for din in result[wbs1]])
                 # duration=1,
-                parent=f"{node['wbs1']}{node['wbs2']}"
+                parent=hash(f"{node['wbs1']}{node['wbs2']}")
             ).save()
-        if node['wbs4'] not in wbs[node['wbs1']][node['wbs2']][node['wbs3']]:
-            wbs[node['wbs1']][node['wbs2']][node['wbs3']].append(node['wbs4'])
+        if node['wbs4_id'] not in wbs[node['wbs1']][node['wbs2']][node['wbs3']]:
+            wbs[node['wbs1']][node['wbs2']][node['wbs3']].append(node['wbs4_id'])
             Task2(
-                id=f"{node['wbs1']}{node['wbs2']}{node['wbs3']}{node['wbs4']}",
+                id=hash(f"{node['wbs1']}{node['wbs2']}{node['wbs3']}{node['wbs4_id']}"),
                 text=f"({node['wbs4_id']}) {node['wbs4']}",
                 # min(start_date of levels)
                 start_date=datetime.today() + timedelta(days=min([el['distance'] for el in graph_data if (
                         el['wbs1'] == node['wbs1'] and el['wbs2'] == node['wbs2'] and el['wbs3'] == node['wbs3'] and
-                        el['wbs4'] == node['wbs4'])])),
+                        el['wbs4_id'] == node['wbs4_id'])])),
                 end_date=datetime.today() + timedelta(days=max([el['distance'] for el in graph_data if (
                         el['wbs1'] == node['wbs1'] and el['wbs2'] == node['wbs2'] and el['wbs3'] == node['wbs3'] and
-                        el['wbs4'] == node['wbs4'])]) + 1),
+                        el['wbs4_id'] == node['wbs4_id'])]) + 1),
                 # duration = max([distances[din] for din in result[wbs1]])
                 # duration=1,
-                parent=f"{node['wbs1']}{node['wbs2']}{node['wbs3']}"
+                parent=hash(f"{node['wbs1']}{node['wbs2']}{node['wbs3']}")
             ).save()
 
         Task2(
-            id=f"{node['id']}",
+            id=hash(f"{node['id']}"),
             text=node['name'],
             # min(start_date of levels)
             start_date=datetime.today() + timedelta(days=node['distance']),
             # duration = max([distances[din] for din in result[wbs1]])
             duration=1,
-            parent=f"{node['wbs1']}{node['wbs2']}{node['wbs3']}{node['wbs4']}"
+            parent=hash(f"{node['wbs1']}{node['wbs2']}{node['wbs3']}{node['wbs4_id']}")
         ).save()
     project_id = request.session["project_id"]
     # project = Project.objects.get(id=project_id)
@@ -944,8 +944,8 @@ def adcm_schedule(request):
     data = json.loads(response.json())
     for el in data:
         Link(
-            source=str(el['source']),
-            target=str(el['target']),
+            source=str(hash(el['source'])),
+            target=str(hash(el['target'])),
             type=str(el['type']),
             lag=el['lag'],
         ).save()
