@@ -99,7 +99,7 @@
                 server_url: '{{ip}}',
                 server_user: "neo4j",
 				server_password: "23109900",
-                initial_cypher: "MATCH (n) OPTIONAL MATCH (n)-[r]->(m) RETURN n, r, m"
+                initial_cypher: "MATCH (n:WORK) OPTIONAL MATCH (n:WORK)-[r]->(m:WORK) RETURN n, r, m"
 			}
 				events = new EventController();	//see events.js !!
             viz = new NeoVis_simplified({
