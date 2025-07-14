@@ -10,7 +10,7 @@ from .data_collection import allNodes, calculateDistance
 logger = logging.getLogger(__name__)
 
 # Number of elements in storey for visualisation
-LIMIT = 5
+LIMIT = 500000
 
 # ELEMENTS_URI = "neo4j://localhost:7686"
 # GROUPS_URI = "neo4j://localhost:7685"
@@ -87,7 +87,7 @@ def node_attributes(elem) -> dict:
     #         psets["ADCM"].pop('id')
     #     atts.update(psets["ADCM"])
     if "ADCM_GESN" in atts.keys():
-        atts["ADCM_GESN"] = atts["ADCM_GESN"][:-3]
+        atts["ADCM_GESN"] = atts["ADCM_GESN"][:9]
     atts.setdefault("ADCM_Title", None)
     atts.setdefault("ADCM_Level", None)
     atts.setdefault("ADCM_RD", None)
@@ -104,13 +104,11 @@ def node_attributes(elem) -> dict:
         "Elevation",
         round(elem.Elevation, 1) if hasattr(elem, "Elevation") else atts["coordinates"][2],
     )
-
     return atts
 
 
 def get_all_children(element):
     all_children = set()
-
     # Используем связь element.ContainsElements
     if element.is_a('IfcSpatialStructureElement'):
         for rel in element.ContainsElements:
@@ -278,6 +276,7 @@ class IfcToNeo4jConverter:
                                 elements_in_wbs2
                             ))
                             target_elems.sort(key=lambda el: node_attributes(el).get("Elevation"))
+                            # for i in range(len(target_elems)):
                             for i in range(len(target_elems[:LIMIT])):
                                 atts = node_attributes(target_elems[i])
                                 atts.update({"storey_name": storey_name})
@@ -313,6 +312,42 @@ class IfcToNeo4jConverter:
             RETURN n.id AS id, n.Elevation As elevation, n.name AS name'''
             level_df = pd.DataFrame(session.run(q_storeys).data())
             level_df.sort_values(by=['elevation'], inplace=True, ignore_index=True)
+            print(level_df['name'].values)
+            group_driver = GraphDatabase.driver(GROUPS_URI, auth=(USER, PSWD))
+            group_driver.verify_connectivity()
+            with group_driver.session() as group_session:
+                q0 = f'''MATCH (p:WORK)-[:FOLLOWS]->(c:WORK)
+                RETURN p.DIN as origin, c.DIN as destination'''
+                q0 = pd.DataFrame(group_session.run(q0).data())
+                print(q0)
+                for index, row in q0.iterrows():
+                    for val in level_df['name'].values:
+                        q1 = f'''MATCH (p)-[:CONTAINS]->(c)
+                        WHERE p.name = "{row['origin']}"
+                        AND c.storey_name = '{val}'
+                        RETURN p.id LIMIT 1'''
+                        q1 = pd.DataFrame(session.run(q1).data())
+                        if q1.empty:
+                            continue
+                        print(q1.iloc[0, 0])
+                        q2 = f'''MATCH (p)-[:CONTAINS]->(c)
+                        WHERE p.name = "{row['destination']}"
+                        AND c.storey_name = '{val}'
+                        RETURN p.id LIMIT 1'''
+                        q2 = pd.DataFrame(session.run(q2).data())
+                        if q2.empty:
+                            continue
+                        print(q2.iloc[0, 0])
+                        q_storeys = f'''
+                        MATCH (a {{id: '{q1.iloc[0, 0]}'}})
+                        MATCH (b {{id: '{q2.iloc[0, 0]}'}})
+                        MERGE (a)-[r:FOLLOWS]->(b)'''
+                        session.run(q_storeys)
+    #         q_storeys = '''
+    #         MATCH (a {name: '09-04-010'})
+    # MATCH (b {name: '09-04-012'})
+    # MERGE (a)-[r:FOLLOWS]->(b)'''
+    #         session.run(q_storeys)
 
             def connect_wbs(parent_id_1, parent_id_2, label, rel_in_group, rel_type):
                 q_get_last = f'''MATCH (p {{id: '{str(parent_id_1)}' }}) --> (s:{label})
@@ -364,10 +399,10 @@ class IfcToNeo4jConverter:
     def get_nodes(self):
         q_storey_wbs2 = """MATCH 
         (el)-[:TRAVERSE|TRAVERSE_GROUP]->(fl) RETURN el.id as id, el.ADCM_Title as wbs1, el.storey_name as wbs2, 
-        el.ADCM_RD as wbs3, el.ADCM_GESN as wbs4_id, el.name as name, el.is_a as ifc_type 
+        el.ADCM_GESN as wbs3, el.ADCM_RD as wbs4_id, el.name as name, el.is_a as ifc_type 
         UNION MATCH 
         (el)-[:TRAVERSE|TRAVERSE_GROUP]->(fl) RETURN fl.id as id, fl.ADCM_Title as wbs1, fl.storey_name as wbs2, 
-        fl.ADCM_RD as wbs3, fl.ADCM_GESN as wbs4_id, fl.name as name, fl.is_a as ifc_type
+        fl.ADCM_GESN as wbs3, fl.ADCM_RD as wbs4_id, fl.name as name, fl.is_a as ifc_type
         """
         with self.element_driver.session() as session:
             nodes = session.run(q_storey_wbs2).data()

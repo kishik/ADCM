@@ -54,11 +54,11 @@ class AddNode(forms.Form):
         max_length=80,
         required=True,
     )
-    name = forms.CharField(
-        label="Name",
-        max_length=80,
-        required=True,
-    )
+    # name = forms.CharField(
+    #     label="Name",
+    #     max_length=80,
+    #     required=True,
+    # )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

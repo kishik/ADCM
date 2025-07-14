@@ -51,7 +51,7 @@ sdk = YCloudML(
 )
 
 model = sdk.models.completions("yandexgpt")
-model = model.configure(temperature=0.1)
+model = model.configure(temperature=0.3)
 
 
 graph_data = []
@@ -568,6 +568,7 @@ def adcm_volumes(request, project_id):
         )
     
     data = json.loads(response.json())
+    # return JsonResponse(data, safe=False)
     # try:    
     #     data = json.loads(response.json())
 
@@ -592,20 +593,21 @@ def adcm_volumes(request, project_id):
     data = [{k: v for k, v in d.items() if k != 'distance'} for d in data]
     wbs = {}
 
-    for i in range(len(graph_data)):
-        messages = [
-        {
-            "role": "system",
-            "text": f"Придумай одно короткое название для действия-работы при строительстве. Сохраняй уникальный цифровой идентификатор",
-        },
-        {
-            "role": "user",
-            "text": graph_data[i]['name'],
-        },
-        ]
+    # # for i in range(len(graph_data)):
+    # #     messages = [
+    # #     {
+    # #         "role": "system",
+    # #         "text": f"Придумай одно короткое название для действия-работы при строительстве. Сохраняй уникальный цифровой идентификатор",
+    # #     },
+    # #     {
+    # #         "role": "user",
+    # #         "text": graph_data[i]['name'],
+    # #     },
+    # #     ]
 
-        result = model.run(messages)
-        graph_data[i]['name'] = ' '.join((result.alternatives[0].text.replace('.',''), f'ID {i}'))
+    #     result = model.run(messages)
+        # graph_data[i]['name'] = ' '.join((graph_data[i]['name'], 'split', result.alternatives[0].text.replace('.',''), f'ID {i}'))
+    # graph_data[i]['name'] = ' '.join((graph_data[i]['name'], 'split', f'ID {i}'))
     
     for node in graph_data:
         if node['wbs1'] not in wbs.keys():
@@ -957,7 +959,7 @@ def add_link(request):
     if not request.user.is_authenticated:
         return redirect("/login/")
     session = data_collect.authentication(url=X2_URL, user=USER, password=X2_PASS)
-    add.edge(session, request.POST["from_din"], request.POST["to_din"], request.POST["weight"])
+    add.edge2(session, request.POST["from_din"], request.POST["to_din"], request.POST["weight"])
     session.close()
     return redirect("/new_graph/")
 
@@ -967,7 +969,7 @@ def add_node(request):
     if not request.user.is_authenticated:
         return redirect("/login/")
     session = data_collect.authentication(url=X2_URL, user=USER, password=X2_PASS)
-    add.node(session=session, node_din=request.POST["din"], node_name=request.POST["name"])
+    add.node2(session=session, node_din=request.POST["din"])
     session.close()
     return redirect("/new_graph/")
 

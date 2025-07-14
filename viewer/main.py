@@ -12,7 +12,8 @@ from pydantic import BaseModel
 
 # from myapp.graph_creation.yml import get_cfg
 from new_loader.ifc_to_neo4j import IfcToNeo4jConverter
-
+import sys
+sys.setrecursionlimit(100000)
 
 class Project(BaseModel):
     name: str

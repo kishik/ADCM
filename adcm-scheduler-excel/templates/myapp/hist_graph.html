@@ -191,7 +191,8 @@ alert("no result!");
 			if(item.raw.properties){
 				node=item.raw.properties;
 				node.id=item.id;
-				node.label=item.raw.properties.DIN + '\n' + item.raw.properties.name ||  item.raw.properties.title;
+				node.label=item.raw.properties.DIN;
+				//  + '\n' + item.raw.properties.name ||  item.raw.properties.title;
                 // {#console.log(item.raw.properties)#}
 				node.title=item.raw.properties.plot || node.label;
 				node.labels=item.raw.labels;
@@ -380,7 +381,8 @@ network.on("hold", function (params) {
 
 		node.id = neo4jNode.identity.toInt();
 		node.raw = neo4jNode;
-        node.label = neo4jNode.properties.DIN + '\n' + neo4jNode.properties.name;
+        node.label = neo4jNode.properties.DIN;
+		// + '\n' + neo4jNode.properties.name;
         // {#console.log(neo4jNode.properties.name)#}
 		return node;
 	}
