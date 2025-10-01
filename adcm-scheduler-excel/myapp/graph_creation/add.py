@@ -14,11 +14,27 @@ def node(session: Session, node_din: str, node_name: str) -> None:
     session.run(Q_ADD_NODE, n_din=node_din, n_name=node_name)
 
 
+def node2(session: Session, node_din: str) -> None:
+    Q_ADD_NODE = """CREATE (node:WORK {DIN: $node_din})"""
+    session.run(Q_ADD_NODE, node_din=node_din)
+
+
 def edge(session: Session, pred_din: str, flw_din: str, weight: int = 1) -> None:
     Q_ADD_REL = """MATCH (n:Work)
     WHERE n.DIN = $din1 AND n.type = 'finish'
     MATCH (m:Work)
     WHERE m.DIN = $din2 AND m.type = 'start'
+    MERGE (n)-[r:FOLLOWS]->(m)
+    SET r.weight = toInteger(coalesce(r.weight, 0)) + toInteger($wght);
+    """
+    session.run(Q_ADD_REL, din1=pred_din, din2=flw_din, wght=weight)
+
+
+def edge2(session: Session, pred_din: str, flw_din: str, weight: int = 1) -> None:
+    Q_ADD_REL = """MATCH (n:WORK)
+    WHERE n.DIN = $din1
+    MATCH (m:WORK)
+    WHERE m.DIN = $din2
     MERGE (n)-[r:FOLLOWS]->(m)
     SET r.weight = toInteger(coalesce(r.weight, 0)) + toInteger($wght);
     """
