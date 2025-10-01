@@ -1,4 +1,5 @@
 {% extends "myapp/hat.html" %}
+<br/>
 {% load crispy_forms_tags %}
 {% csrf_token %}
 {% block content%}
@@ -8,7 +9,7 @@
     <script src="https://unpkg.com/neovis.js@2.0.2"></script>
   <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 	<script src="https://unpkg.com/neo4j-driver"></script>
-    {% crispy form %}
+    
     {% crispy link link.helper %}
     {% crispy node node.helper %}
     <style>

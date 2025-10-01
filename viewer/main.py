@@ -3,7 +3,8 @@ import logging
 import os
 import re
 import shutil
-
+import aiohttp
+import asyncio
 import gdown
 import requests
 from fastapi import FastAPI, Request
@@ -38,30 +39,47 @@ logger.setLevel(logging.DEBUG)
 path_to_explorer = dict()
 
 
-@app.post("/")
-async def deploy_project(project: Project):
-    os.chdir('/app/')
-    url = f"{project.link[39:-12]}"
-    logger.info(f'https://drive.google.com/drive/folders/{url}')
-    gdown.download_folder(f'https://drive.google.com/drive/folders/{url}', quiet=True, use_cookies=False,
-                          output=f'{project.name}')
-    # os.system('ls')
-    # os.system('wget --no-check-certificate \'https://docs.google.com/uc?export=download&id=FILEID\' -O FILENAME')
-    os.chdir('./xeokit-bim-viewer-app/')
-    os.system(f'node ./createProject.js -p {project.name} -s ../{project.name}/**/*.ifc')
-    os.chdir('..')
-    files = [f for f in os.listdir(f'./{project.name}')]
-    for file in files:
-        # print(f'./{project.name}/{file}')
-        logger.info(f'./xeokit-bim-viewer-app/data/projects/{project.name}/models/{file[:-4]}/source/geometry.ifc')
-        shutil.move(f'./{project.name}/{file}',
-                    f'./xeokit-bim-viewer-app/data/projects/{project.name}/models/{file[:-4]}/source/geometry.ifc')
+# @app.post("/")
+# async def deploy_project(project: Project):
+#     os.chdir('/app/')
+#     url = f"{project.link[39:-12]}"
+#     logger.info(f'https://drive.google.com/drive/folders/{url}')
+#     gdown.download_folder(f'https://drive.google.com/drive/folders/{url}', quiet=True, use_cookies=False,
+#                           output=f'{project.name}')
+#     # os.system('ls')
+#     # os.system('wget --no-check-certificate \'https://docs.google.com/uc?export=download&id=FILEID\' -O FILENAME')
+#     os.chdir('./xeokit-bim-viewer-app/')
+#     os.system(f'node ./createProject.js -p {project.name} -s ../{project.name}/**/*.ifc')
+#     os.chdir('..')
+#     files = [f for f in os.listdir(f'./{project.name}')]
+#     for file in files:
+#         # print(f'./{project.name}/{file}')
+#         logger.info(f'./xeokit-bim-viewer-app/data/projects/{project.name}/models/{file[:-4]}/source/geometry.ifc')
+#         shutil.move(f'./{project.name}/{file}',
+#                     f'./xeokit-bim-viewer-app/data/projects/{project.name}/models/{file[:-4]}/source/geometry.ifc')
 
-    neo4j_exp = IfcToNeo4jConverter()
-    path = f'./xeokit-bim-viewer-app/data/projects/{project.name}/models/'
-    neo4j_exp.create(path)
-    path_to_explorer[path] = neo4j_exp
-    return 200
+#     neo4j_exp = IfcToNeo4jConverter()
+#     path = f'./xeokit-bim-viewer-app/data/projects/{project.name}/models/'
+#     neo4j_exp.create(path)
+#     path_to_explorer[path] = neo4j_exp
+#     return 200
+
+async def download_large_file(url: str, file_path: str, headers):
+    async with aiohttp.ClientSession() as session:
+        print(f"Received item: {url[0]}")
+        print(f"Received item: {file_path[0]}")
+        print(f"Received item: {headers}")
+        url = url[0]
+        file_path = file_path[0]
+        async with session.get(url, headers=headers) as response:
+            with open(file_path, 'wb') as f:
+                async for chunk in response.content.iter_chunked(1024):
+                    f.write(chunk)
+
+async def download_multiple_files(urls: list, paths: list, headers):
+    tasks = [download_large_file(url, path, headers) for url, path in zip(urls, paths)]
+    await asyncio.gather(*tasks)
+
 
 
 @app.get("/load/{project_name}")
@@ -112,9 +130,14 @@ async def load_project(project_id: str, jwt: str):
     if len(r.json()['ifcFiles']) == 0:
         os.chdir('/app/')
         return JSONResponse(content={"message": "В проекте нет IFC файлов"}, status_code=404)
-    for el in r.json()['ifcFiles']:
-        m = requests.get(f"http://{LAST_API}/api/Files/download_file/{el['id']}/0", headers=headers, allow_redirects=True)
-        open(f'{el["ifc_name"]}', 'wb').write(m.content)
+    paths = [[f"http://{LAST_API}/api/Files/download_file/{el['id']}/0"] for el in r.json()['ifcFiles']]
+    files = [[f'{el["ifc_name"]}'] for el in r.json()['ifcFiles']]
+    task = asyncio.create_task(download_multiple_files(paths, files, headers))  # создаем задачу из корутины example_coroutine()
+    await task
+
+    # for el in r.json()['ifcFiles']:
+    #     m = requests.get(f"http://{LAST_API}/api/Files/download_file/{el['id']}/0", headers=headers, allow_redirects=True)
+    #     open(f'{el["ifc_name"]}', 'wb').write(m.content)
     # r = requests.get(f'http://{TEST_IP}:8880/projects/info/{project_id}')
     # for el in r.json()['models']:
     #     new_url = re.sub(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', TEST_IP, el['ifc'])
