@@ -1,4 +1,3 @@
-ifcopenshell<0.7.1
 bs4
 fastapi
 gdown
@@ -10,3 +9,6 @@ pandas
 neo4j
 xlrd
 aiohttp
+ifccsv
+neo4j
+ifcopenshell<0.7.1

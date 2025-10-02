@@ -10,9 +10,13 @@ import requests
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from os import listdir
+from os.path import isfile, join
+
 
 # from myapp.graph_creation.yml import get_cfg
 from new_loader.ifc_to_neo4j import IfcToNeo4jConverter
+from new_loader.test_neo4j import get_nodes_big, get_edges_big
 
 
 class Project(BaseModel):
@@ -81,27 +85,27 @@ async def download_multiple_files(urls: list, paths: list, headers):
 
 
 
-@app.get("/load/{project_name}")
-async def get_nodes(project_name: str):
-    os.chdir('/app/')
-    path = f'./{project_name}/'
-    if path not in path_to_explorer:
-        logger.error(f"{path} not in {path_to_explorer.keys()}")
-        return JSONResponse(content={"message": "Нет ADCM в структуре файла"}, status_code=404)
-        raise KeyError(f"{path} not in {path_to_explorer.keys()}")
-    neo4j_exp = path_to_explorer.get(path)
+# @app.get("/load/{project_name}")
+# async def get_nodes(project_name: str):
+#     os.chdir('/app/')
+#     path = f'./{project_name}/'
+#     if path not in path_to_explorer:
+#         logger.error(f"{path} not in {path_to_explorer.keys()}")
+#         return JSONResponse(content={"message": "Нет ADCM в структуре файла"}, status_code=404)
+#         raise KeyError(f"{path} not in {path_to_explorer.keys()}")
+#     neo4j_exp = path_to_explorer.get(path)
 
-    return JSONResponse(content=json.dumps(neo4j_exp.get_nodes()))
-    # neo4j_exp.close()
+#     return JSONResponse(content=json.dumps(neo4j_exp.get_nodes()))
+#     # neo4j_exp.close()
 
 
-@app.get("/links/{project_name}")
-async def get_links(project_name: str):
-    os.chdir('/app/')
-    path = f'./{project_name}/'
-    neo4j_exp = path_to_explorer.get(path)
+# @app.get("/links/{project_name}")
+# async def get_links(project_name: str):
+#     os.chdir('/app/')
+#     path = f'./{project_name}/'
+#     neo4j_exp = path_to_explorer.get(path)
 
-    return JSONResponse(content=json.dumps(neo4j_exp.get_edges()))
+#     return JSONResponse(content=json.dumps(neo4j_exp.get_edges()))
 
 
 @app.get("/copy/{project_id}/")
@@ -162,3 +166,72 @@ async def load_project(project_id: str, jwt: str):
     neo4j_exp.create(path)
     path_to_explorer[path] = neo4j_exp
     return JSONResponse(content={}, status_code=200)
+
+
+@app.get("/load/{project_id}")
+async def get_nodes(project_id: str, jwt: str):
+    os.chdir('/app/')
+    # jwt = request.headers.get('Authorization')
+    jwt = f'Bearer {jwt}'
+    # logger.info(f'jwt {jwt}')
+    # if os.path.isdir(f'./{project_id}'):
+    #     shutil.rmtree(f'./{project_id}')
+    if os.path.isdir(f'./{project_id}/'):
+        shutil.rmtree(f'./{project_id}/')
+    #     os.chdir('./xeokit-bim-viewer-app/')
+    #     os.system(f'node deleteProject.js -p {project_id}')
+    #     os.chdir('/app/')
+
+    os.mkdir(f'{project_id}')
+    # download project
+    os.chdir(f'./{project_id}/')
+
+    # /api/Files/get_list_ifc_files_by_project/{ProjectId}
+    headers = {"Authorization": f"{jwt}"}
+    r = requests.get(f'http://{LAST_API}/api/Files/get_list_ifc_files_by_project/{project_id}', headers=headers)
+    # print(r.json())
+    if len(r.json()['ifcFiles']) == 0:
+        os.chdir('/app/')
+        return JSONResponse(content={"message": "В проекте нет IFC файлов"}, status_code=404)
+    paths = [[f"http://{LAST_API}/api/Files/download_file/{el['id']}/0"] for el in r.json()['ifcFiles']]
+    files = [[f'{el["ifc_name"]}'] for el in r.json()['ifcFiles']]
+    task = asyncio.create_task(download_multiple_files(paths, files, headers))  # создаем задачу из корутины example_coroutine()
+    await task
+    return JSONResponse(content=json.dumps(get_nodes_big(files)))
+
+
+
+
+@app.get("/links/{project_id}")
+async def get_links(project_id: str):
+    os.chdir('/app/')
+    # jwt = request.headers.get('Authorization')
+    # jwt = f'Bearer {jwt}'
+    # logger.info(f'jwt {jwt}')
+    # if os.path.isdir(f'./{project_id}'):
+    #     shutil.rmtree(f'./{project_id}')
+    # if os.path.isdir(f'./xeokit-bim-viewer-app/data/projects/{project_id}/'):
+    #     # shutil.rmtree(f'./xeokit-bim-viewer-app/data/projects/{project_id}/')
+    #     os.chdir('./xeokit-bim-viewer-app/')
+    #     os.system(f'node deleteProject.js -p {project_id}')
+    #     os.chdir('/app/')
+
+    # os.mkdir(f'{project_id}')
+    # download project
+    os.chdir(f'./{project_id}/')
+
+    # /api/Files/get_list_ifc_files_by_project/{ProjectId}
+    # headers = {"Authorization": f"{jwt}"}
+    # r = requests.get(f'http://{LAST_API}/api/Files/get_list_ifc_files_by_project/{project_id}', headers=headers)
+    # # print(r.json())
+    # if len(r.json()['ifcFiles']) == 0:
+    #     os.chdir('/app/')
+    #     return JSONResponse(content={"message": "В проекте нет IFC файлов"}, status_code=404)
+    # paths = [[f"http://{LAST_API}/api/Files/download_file/{el['id']}/0"] for el in r.json()['ifcFiles']]
+    # files = [[f'{el["ifc_name"]}'] for el in r.json()['ifcFiles']]
+    # task = asyncio.create_task(download_multiple_files(paths, files, headers))  # создаем задачу из корутины example_coroutine()
+    # await task
+    files = [f for f in listdir() if f.endswith('ifc')]
+    print(files)
+    # 3edc86f1-a9a3-4a29-8662-8a8d6c96a344
+    return JSONResponse(content=json.dumps(get_edges_big(files)))
