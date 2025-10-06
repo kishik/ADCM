@@ -5,26 +5,26 @@ from django.forms import ModelForm, Textarea
 from django.urls import reverse_lazy
 
 
-class FileFieldForm(forms.Form):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper(*args, **kwargs)
-        self.helper.form_action = reverse_lazy("upload_gantt")
+# class FileFieldForm(forms.Form):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.helper = FormHelper(*args, **kwargs)
+#         self.helper.form_action = reverse_lazy("upload_gantt")
 
-        self.helper.add_input(Submit("submit", "Отправить"))
+#         self.helper.add_input(Submit("submit", "Отправить"))
 
-    file_field = forms.FileField(widget=forms.ClearableFileInput(attrs={"multiple": True}))
+#     file_field = forms.FileField(widget=forms.ClearableFileInput(attrs={"multiple": True}))
 
 
-class UploadFileForm(forms.Form):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper(*args, **kwargs)
-        self.helper.form_action = reverse_lazy("upload")
+# class UploadFileForm(forms.Form):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.helper = FormHelper(*args, **kwargs)
+#         self.helper.form_action = reverse_lazy("upload")
 
-        self.helper.add_input(Submit("submit", "Отправить"))
+#         self.helper.add_input(Submit("submit", "Отправить"))
 
-    file = forms.FileField()
+#     file = forms.FileField()
 
 
 class AddLink(forms.Form):
@@ -54,11 +54,11 @@ class AddNode(forms.Form):
         max_length=80,
         required=True,
     )
-    name = forms.CharField(
-        label="Name",
-        max_length=80,
-        required=True,
-    )
+    # name = forms.CharField(
+    #     label="Name",
+    #     max_length=80,
+    #     required=True,
+    # )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
