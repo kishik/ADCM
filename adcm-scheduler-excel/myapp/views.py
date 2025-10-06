@@ -50,7 +50,7 @@ sdk = YCloudML(
 )
 
 model = sdk.models.completions("yandexgpt")
-model = model.configure(temperature=0.1)
+model = model.configure(temperature=0.3)
 
 
 graph_data = []
@@ -173,6 +173,21 @@ def adcm_volumes(request, project_id):
         )
     
     data = json.loads(response.json())
+
+    # return JsonResponse(data, safe=False)
+    # try:    
+    #     data = json.loads(response.json())
+
+    # except:
+    #     # return JsonResponse({'Ошибка':'Отсутсвует ADCM в модели'})
+    #     return render(
+    #         request,
+    #         "myapp/error.html",
+    #         {
+    #             "error": 'Ошибка: Отсутсвует ADCM в модели'
+    #         },
+    #     )
+
     for i in range(len(data)):
         data[i]['wbs'] = f"{data[i]['wbs1']}{data[i]['wbs4_id']}"
     for i in range(len(data)):
@@ -184,6 +199,7 @@ def adcm_volumes(request, project_id):
     graph_data = data.copy()
     data = [{k: v for k, v in d.items() if k != 'distance'} for d in data]
     wbs = {}
+
 
     # for i in range(len(graph_data)):
     #     messages = [
@@ -199,6 +215,7 @@ def adcm_volumes(request, project_id):
 
     #     result = model.run(messages)
     #     graph_data[i]['name'] = ' '.join((result.alternatives[0].text.replace('.',''), f'ID {i}'))
+
     
     for node in graph_data:
         if node['wbs1'] not in wbs.keys():
@@ -473,7 +490,7 @@ def add_link(request):
     if not request.user.is_authenticated:
         return redirect("/login/")
     session = data_collect.authentication(url=X2_URL, user=USER, password=X2_PASS)
-    add.edge(session, request.POST["from_din"], request.POST["to_din"], request.POST["weight"])
+    add.edge2(session, request.POST["from_din"], request.POST["to_din"], request.POST["weight"])
     session.close()
     return redirect("/new_graph/")
 
@@ -483,7 +500,7 @@ def add_node(request):
     if not request.user.is_authenticated:
         return redirect("/login/")
     session = data_collect.authentication(url=X2_URL, user=USER, password=X2_PASS)
-    add.node(session=session, node_din=request.POST["din"], node_name=request.POST["name"])
+    add.node2(session=session, node_din=request.POST["din"])
     session.close()
     return redirect("/new_graph/")
 
