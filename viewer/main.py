@@ -116,11 +116,11 @@ async def load_project(project_id: str, jwt: str):
     # logger.info(f'jwt {jwt}')
     if os.path.isdir(f'./{project_id}'):
         shutil.rmtree(f'./{project_id}')
-    if os.path.isdir(f'./xeokit-bim-viewer-app/data/projects/{project_id}/'):
-        # shutil.rmtree(f'./xeokit-bim-viewer-app/data/projects/{project_id}/')
-        os.chdir('./xeokit-bim-viewer-app/')
-        os.system(f'node deleteProject.js -p {project_id}')
-        os.chdir('/app/')
+    # if os.path.isdir(f'./xeokit-bim-viewer-app/data/projects/{project_id}/'):
+    #     # shutil.rmtree(f'./xeokit-bim-viewer-app/data/projects/{project_id}/')
+    #     os.chdir('./xeokit-bim-viewer-app/')
+    #     os.system(f'node deleteProject.js -p {project_id}')
+    #     os.chdir('/app/')
 
     os.mkdir(f'{project_id}')
     # download project

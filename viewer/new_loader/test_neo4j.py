@@ -6,8 +6,7 @@ from ifccsv import IfcCsv
 import ifcopenshell
 import numpy as np
 
-# URI examples: "neo4j://localhost", "neo4j+s://xxx.databases.neo4j.io"
-# URI = "neo4j://localhost"
+
 URI = "neo4j://neo4j_user:7687"
 AUTH = ("neo4j", "23109900")
 
@@ -108,14 +107,11 @@ def link_gesn_same_level(driver, linked, levels, first_elem_lvl_gesn, last_elem_
     # соединяем последний элемент из раннего ГЭСН и первый элемент из позднего
     for lvl in levels:
         for link in linked:
-            # print(link)
-            # print(first_elem_lvl_gesn)
             driver.execute_query("""
             MATCH (a:ELEMENT),(b:ELEMENT)
             WHERE a.GlobalId = $oldID AND b.GlobalId = $newID
             CREATE (a)-[r:LINE]->(b)
             """,
-            
             oldID=last_elem_lvl_gesn[lvl][link[0]], newID=first_elem_lvl_gesn[lvl][link[1]], database_="neo4j")
 
 
@@ -136,7 +132,7 @@ def link_gesn_different_level(driver, linked, levels, first_elem_lvl_gesn, last_
             
             oldID=last_elem_lvl_gesn[levels[i]][link[0]], newID=first_elem_lvl_gesn[levels[i+1]][link[1]], database_="neo4j")
 
-##########
+
 def link_same_gesn_different_level(driver, levels, first_elem_lvl_gesn, last_elem_lvl_gesn, df):
     for i in range(len(levels) - 1):
         driver.execute_query("""
@@ -159,12 +155,12 @@ def link_same_gesn_different_level(driver, levels, first_elem_lvl_gesn, last_ele
 
 def prepare_df(file):
     file=file[0]
-    print(file)
     model = ifcopenshell.open(file)
     elements = ifcopenshell.util.selector.filter_elements(model, "IfcElement")
     attributes = ["id",'Текст', "Name", 'IfcBuildingStorey']
     ifc_csv = IfcCsv()
-    ifc_csv.export(model, elements, attributes, output=f"{file[:-4]}.csv", format="csv", delimiter=",", null="-")
+    # ifc_csv.export(model, elements, attributes, output=f"{file[:-4]}.csv", format="csv", delimiter=",", null="-")
+    ifc_csv.export(model, elements, attributes, delimiter=",", null="-")
     df = ifc_csv.export_pd()
     df = pd.merge(df[['GlobalId', 'Name']], pd.json_normalize(df['Текст']), left_index=True, right_index=True)
     return df.dropna()
@@ -178,9 +174,6 @@ def get_hist_links():
         RETURN a.DIN as source, c.DIN as target
         """,
         database_="neo4j")
-        # children_arr = np.array([item.data()["din"] for item in records])
-        # print(records)
-        
         edges = [(record.data()['source'], record.data()['target']) for record in records]
         return edges
 
@@ -310,24 +303,19 @@ def get_edges(driver):
     RETURN ID(a) as source, ID(c) as target
     """,
     database_="neo4j")
-    # children_arr = np.array([item.data()["din"] for item in records])
-    # print(records)
     
     edges = [record.data() for record in records]
-    # print(edges)
-    # edges = self.element_driver.session().run(query).data()
+
     for edge in edges:
         edge.update({"type": "0", "lag": 0})
-    print(get_hist_links())
-    print(allNodesGESN(driver))
     return edges
 
 
 def get_nodes_big(files):
     # file = '0.ifc'
     # files = [file]
-    print(files)
     with GraphDatabase.driver(URI, auth=AUTH) as driver:
+        # словари с перым и последним элементом в рамках одного этажа и ГЕСН
         first_elem_lvl_gesn = {}
         last_elem_lvl_gesn = {}
         driver.verify_connectivity()
@@ -363,28 +351,30 @@ def get_nodes_big(files):
                         link_elements(driver, elprev, row['GlobalId'])
                     last_elem_lvl_gesn[lvl][sublvl] = row['GlobalId']
                     elprev = row['GlobalId']
+
+        # удаляем ноды и связи со зданиями
         driver.execute_query("""
         MATCH (n:WBS1) DETACH DELETE n
         """,
         database_="neo4j")
-        # [(1,2), (3,2), (1,3)] пример соединений ГЕСН
+
         Nodes = allNodesGESN(driver)
         filtered = []
         for el in get_hist_links():
             if el[0] in Nodes and el[1] in Nodes:
                 filtered.append(el)
+
         link_gesn_same_level(driver, filtered, 
                             sorted(list(df['ADCM_Level'].unique())), first_elem_lvl_gesn, last_elem_lvl_gesn)
         link_gesn_different_level(driver, filtered,
                                 sorted(list(df['ADCM_Level'].unique())), first_elem_lvl_gesn, last_elem_lvl_gesn)
         link_same_gesn_different_level(driver, sorted(list(df['ADCM_Level'].unique())), first_elem_lvl_gesn, last_elem_lvl_gesn, df)
-        # добавить на след этаж аналогично lvl[link1] < lvl[link2] <=?
-        # должна ли быть связь между этажами одинакового класса?
-        # класс со следующего этажа после класса на этом
+        # удаляем ноды и связи с этажами
         driver.execute_query("""
         MATCH (n:WBS2) DETACH DELETE n
         """,
         database_="neo4j")
+        # удаляем ноды и связи с ГЕСН
         driver.execute_query("""
         MATCH (n:WBS3) DETACH DELETE n
         """,
@@ -396,73 +386,11 @@ def get_edges_big(files):
     # file = '0.ifc'
     # files = [file]
     with GraphDatabase.driver(URI, auth=AUTH) as driver:
-        # first_elem_lvl_gesn = {}
-        # last_elem_lvl_gesn = {}
-        # driver.verify_connectivity()
-        # driver.execute_query("""
-        # MATCH (n) DETACH DELETE n
-        # """,
-        # database_="neo4j")
-        # df = prepare_df([files[0]])
-        # if len(files) > 1:
-        #     for i in range(len(files) - 1):
-        #         df = pd.concat([df, prepare_df([files[i + 1]])], ignore_index=True)
-
-        # create_wbs1(driver, df['ADCM_Title'][0])
-        # lvlprev = None
-        # for lvl in sorted(list(df['ADCM_Level'].unique())):
-        #     first_elem_lvl_gesn[lvl] = {}
-        #     last_elem_lvl_gesn[lvl] = {}
-        #     create_wbs2(driver, lvl, df['ADCM_Title'][0])
-        #     if lvlprev is not None:
-        #         link_levels(driver, lvlprev, lvl)
-        #     lvlprev = lvl
-        #     for sublvl in list(df[df['ADCM_Level']==lvl]['ADCM_GESN'].unique()):
-        #         create_wbs3(driver, sublvl, df['ADCM_Title'][0], lvl)
-
-        #         sub_df = df[(df['ADCM_Level']==lvl) & (df['ADCM_GESN']==sublvl)]
-        #         elprev = None
-        #         for index, row in sub_df.iterrows():
-        #             if elprev is None:
-        #                 create_element(driver, row['Name'], row['GlobalId'], row['ADCM_JobType'], df['ADCM_Title'][0], lvl, sublvl, True)
-        #                 first_elem_lvl_gesn[lvl][sublvl] = row['GlobalId']
-        #             if elprev is not None:
-        #                 create_element(driver, row['Name'], row['GlobalId'], row['ADCM_JobType'], df['ADCM_Title'][0], lvl, sublvl, False)
-        #                 link_elements(driver, elprev, row['GlobalId'])
-        #             last_elem_lvl_gesn[lvl][sublvl] = row['GlobalId']
-        #             elprev = row['GlobalId']
-        # driver.execute_query("""
-        # MATCH (n:WBS1) DETACH DELETE n
-        # """,
-        # database_="neo4j")
-
-        # # [(1,2), (3,2), (1,3)] пример соединений ГЕСН
-        # # link_gesn_same_level(driver, [], 
-        # #                     sorted(list(df['ADCM_Level'].unique())), first_elem_lvl_gesn, last_elem_lvl_gesn)
-        # # link_gesn_different_level(driver, [],
-        # #                         sorted(list(df['ADCM_Level'].unique())), first_elem_lvl_gesn, last_elem_lvl_gesn)
-        # link_same_gesn_different_level(driver, sorted(list(df['ADCM_Level'].unique())), first_elem_lvl_gesn, last_elem_lvl_gesn, df)
-        # # добавить на след этаж аналогично lvl[link1] < lvl[link2] <=?
-        # # должна ли быть связь между этажами одинакового класса?
-        # # класс со следующего этажа после класса на этом
-        # driver.execute_query("""
-        # MATCH (n:WBS2) DETACH DELETE n
-        # """,
-        # database_="neo4j")
-        # driver.execute_query("""
-        # MATCH (n:WBS3) DETACH DELETE n
-        # """,
-        # database_="neo4j")
+        # все операции выполнены при получении элементов, просто забираем все связи
         return get_edges(driver)
 
 
-    # print(allNodes(driver))
-    # print(parentsByDin(driver, 270))
-    # print(childrenByDin(driver, 269))
-    # distances = {}
-    # prohod(371, distances, driver, allNodes(driver), cur_level=0, visited=[])
-    # print(distances)
-    # print(calculateDistance(driver, allNodes(driver)))
-    # print(get_nodes(driver))
-##################
-
+    # TODO: переписать get_nodes_big для поддержки нескольких зданий: изменить словари - добавить уровень wbs1 и циклом пройти по wbs1 и добавлять их вграф
+    # TODO: сортировка этажей по высоте а не алфавитному порядку
+    # TODO: связи между классами, например: IfcWall -> IfcWindow (SDAI original_type_name получать оттуда, ifccsv не позволяет)
+    # TODO: добавить выбор связи: внутри этажа, между этажей, оба варианта
