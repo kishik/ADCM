@@ -8,12 +8,15 @@ RUN apt update && \
     apt install -y nodejs npm
 
 # Команда для запуска скрипта при запуске контейнера
-COPY creation_script.sh .
-RUN bash creation_script.sh
-
 COPY requirements.txt .
+
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt
+
+COPY creation_script.sh .
+
+RUN bash creation_script.sh
+
 
 COPY . .
 

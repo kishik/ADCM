@@ -151,17 +151,17 @@ def adcm_volumes(request, project_id):
                                  })
 # print(jwt_request.status_code)                                 
     jwt = jwt_request.text
-    response = requests.get(f'http://viewer:8070/copy/{project_id}/', headers={"Authorization": f"Bearer {jwt}"}, params={'jwt': jwt})
-    if response.status_code == 404:
-        return render(
-            request,
-            "myapp/error.html",
-            {
-                "error": ' '.join(('Ошибка:', response.json().get("message")))
-            },
-        )
+    # response = requests.get(f'http://viewer:8070/copy/{project_id}/', headers={"Authorization": f"Bearer {jwt}"}, params={'jwt': jwt})
+    # if response.status_code == 404:
+    #     return render(
+    #         request,
+    #         "myapp/error.html",
+    #         {
+    #             "error": ' '.join(('Ошибка:', response.json().get("message")))
+    #         },
+    #     )
 
-    response = requests.get(f'http://viewer:8070/load/{project_id}/')
+    response = requests.get(f'http://viewer:8070/load/{project_id}/', headers={"Authorization": f"Bearer {jwt}"}, params={'jwt': jwt})
     # logger.error(response.status_code)
     if response.status_code == 404:
         return render(
@@ -200,21 +200,22 @@ def adcm_volumes(request, project_id):
     data = [{k: v for k, v in d.items() if k != 'distance'} for d in data]
     wbs = {}
 
-    # # for i in range(len(graph_data)):
-    # #     messages = [
-    # #     {
-    # #         "role": "system",
-    # #         "text": f"Придумай одно короткое название для действия-работы при строительстве. Сохраняй уникальный цифровой идентификатор",
-    # #     },
-    # #     {
-    # #         "role": "user",
-    # #         "text": graph_data[i]['name'],
-    # #     },
-    # #     ]
+
+    # for i in range(len(graph_data)):
+    #     messages = [
+    #     {
+    #         "role": "system",
+    #         "text": f"Придумай одно короткое название для действия-работы при строительстве. Сохраняй уникальный цифровой идентификатор",
+    #     },
+    #     {
+    #         "role": "user",
+    #         "text": graph_data[i]['name'],
+    #     },
+    #     ]
 
     #     result = model.run(messages)
-        # graph_data[i]['name'] = ' '.join((graph_data[i]['name'], 'split', result.alternatives[0].text.replace('.',''), f'ID {i}'))
-    # graph_data[i]['name'] = ' '.join((graph_data[i]['name'], 'split', f'ID {i}'))
+    #     graph_data[i]['name'] = ' '.join((result.alternatives[0].text.replace('.',''), f'ID {i}'))
+
     
     for node in graph_data:
         if node['wbs1'] not in wbs.keys():
@@ -453,7 +454,7 @@ def adcm_schedule(request):
             ).save()
 
         Task2(
-            id=hash(f"{node['id']}"),
+            id=node['id'],
             text=node['name'],
             # min(start_date of levels)
             start_date=datetime.today() + timedelta(days=node['distance']),
@@ -463,12 +464,21 @@ def adcm_schedule(request):
         ).save()
     project_id = request.session["project_id"]
     # project = Project.objects.get(id=project_id)
+#     jwt_request = requests.post(''.join([API_ADDRESS, '/api/fetch/connect']), 
+#                              json={
+#                                  "url": API_DB_URL,
+#                                  "db": API_DB,
+#                                  "login": API_LOGIN,
+#                                  "password": API_PASSWORD
+#                                  })
+# # print(jwt_request.status_code)                                 
+#     jwt = jwt_request.text
     response = requests.get(f'http://viewer:8070/links/{project_id}/')
     data = json.loads(response.json())
     for el in data:
         Link(
-            source=str(hash(el['source'])),
-            target=str(hash(el['target'])),
+            source=el['source'],
+            target=el['target'],
             type=str(el['type']),
             lag=el['lag'],
         ).save()
